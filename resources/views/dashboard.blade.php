@@ -10,7 +10,7 @@
     </div>
 
     <!-- Cartes de statistiques -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <!-- Total Donneurs -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="flex items-center">
@@ -43,75 +43,92 @@
             </div>
             <div class="mt-4">
                 <span class="text-green-600 text-sm font-medium flex items-center">
-                    Prêts à donner
+                    {{ number_format(($donneursDisponibles / max($totalDonneurs, 1)) * 100, 1) }}% de disponibilité
                 </span>
             </div>
         </div>
 
-        <!-- Dons ce mois -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center">
-                <div class="p-3 bg-blue-100 rounded-lg">
-                    <i class="fas fa-heart text-blue-600 text-xl"></i>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600">Dons ce mois</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ $donsCeMois }}</p>
-                </div>
-            </div>
-            <div class="mt-4">
-                <span class="text-blue-600 text-sm font-medium">
-                    {{ now()->format('F Y') }}
-                </span>
-            </div>
-        </div>
+       
 
-        <!-- Groupes sanguins -->
+        <!-- Total Receveurs -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="flex items-center">
                 <div class="p-3 bg-purple-100 rounded-lg">
-                    <i class="fas fa-tint text-purple-600 text-xl"></i>
+                    <i class="fas fa-hand-holding-heart text-purple-600 text-xl"></i>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600">Groupes Sanguins</p>
-                    <p class="text-2xl font-bold text-gray-900">8</p>
+                    <p class="text-sm font-medium text-gray-600">Total Receveurs</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $totalReceveurs }}</p>
                 </div>
             </div>
             <div class="mt-4">
-                <span class="text-purple-600 text-sm font-medium">
-                    Tous types représentés
+                <a href="{{ route('receveurs.index') }}" class="text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center">
+                    Voir tous les receveurs
+                    <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deuxième ligne de statistiques pour les receveurs -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Receveurs en attente -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-yellow-100 rounded-lg">
+                    <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">En attente</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $receveursEnAttente }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-yellow-600 text-sm font-medium">
+                    {{ number_format(($receveursEnAttente / max($totalReceveurs, 1)) * 100, 1) }}% des receveurs
+                </span>
+            </div>
+        </div>
+
+        <!-- Receveurs urgents -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-orange-100 rounded-lg">
+                    <i class="fas fa-exclamation-triangle text-orange-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Cas urgents</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $receveursUrgents }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-orange-600 text-sm font-medium">
+                    Nécessitent une attention immédiate
+                </span>
+            </div>
+        </div>
+
+        <!-- Receveurs satisfaits -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-green-100 rounded-lg">
+                    <i class="fas fa-check-double text-green-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Satisfaits</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $receveursSatisfaits }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-green-600 text-sm font-medium">
+                    {{ number_format(($receveursSatisfaits / max($totalReceveurs, 1)) * 100, 1) }}% des demandes
                 </span>
             </div>
         </div>
     </div>
 
-    <!-- Statistiques par groupe sanguin -->
-    <div class="mt-8 bg-white rounded-xl shadow-sm border border-gray-200">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Répartition par Groupe Sanguin</h2>
-        </div>
-        <div class="p-6">
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                @php
-                    $groupes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                @endphp
-                
-                @foreach($groupes as $groupe)
-                @php
-                    $count = $statsGroupes[$groupe]['count'] ?? 0;
-                    $percentage = $statsGroupes[$groupe]['percentage'] ?? 0;
-                @endphp
-                <div class="text-center p-4 bg-gray-50 rounded-lg">
-                    <div class="text-2xl font-bold text-red-600 mb-1">{{ $count }}</div>
-                    <div class="text-sm font-medium text-gray-900 mb-1">{{ $groupe }}</div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="bg-red-600 h-2 rounded-full" style="width: {{ $percentage }}%"></div>
-                    </div>
-                    <div class="text-xs text-gray-500 mt-1">{{ number_format($percentage, 1) }}%</div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
+ 
+
+    
 </div>
 @endsection

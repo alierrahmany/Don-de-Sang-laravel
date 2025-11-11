@@ -70,7 +70,7 @@
                         Filtrer
                     </button>
                     <a href="{{ route('donneurs.index') }}" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition flex items-center h-[42px]">
-                        Réinitialiser
+                       <i class="fas fa-refresh mr-1"></i>  Réinitialiser
                     </a>
                 </div>
             </form>

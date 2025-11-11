@@ -36,7 +36,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{donneur}/enregistrer-don', [DonneurController::class, 'enregistrerDon'])->name('donneurs.enregistrer-don');
     });
 
-    // Routes pour les receveurs
+// Routes pour les receveurs
 Route::prefix('receveurs')->group(function () {
     Route::get('/', [ReceveurController::class, 'index'])->name('receveurs.index');
     Route::get('/create', [ReceveurController::class, 'create'])->name('receveurs.create');
@@ -45,7 +45,10 @@ Route::prefix('receveurs')->group(function () {
     Route::get('/{receveur}/edit', [ReceveurController::class, 'edit'])->name('receveurs.edit');
     Route::put('/{receveur}', [ReceveurController::class, 'update'])->name('receveurs.update');
     Route::delete('/{receveur}', [ReceveurController::class, 'destroy'])->name('receveurs.destroy');
+    
+    // Actions supplémentaires
     Route::put('/{receveur}/toggle-urgence', [ReceveurController::class, 'toggleUrgence'])->name('receveurs.toggle-urgence');
     Route::put('/{receveur}/satisfait', [ReceveurController::class, 'markAsSatisfied'])->name('receveurs.satisfait');
+    Route::put('/{receveur}/en-attente', [ReceveurController::class, 'markAsPending'])->name('receveurs.en-attente');
 });
 });
