@@ -4,6 +4,7 @@ use App\Http\Controllers\DonneurController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\ReceveurController;
 
 // Route racine - redirige vers le dashboard si authentifié, sinon vers le login
 Route::get('/', function () {
@@ -34,4 +35,17 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{donneur}/toggle-disponibilite', [DonneurController::class, 'toggleDisponibilite'])->name('donneurs.toggle-disponibilite');
         Route::put('/{donneur}/enregistrer-don', [DonneurController::class, 'enregistrerDon'])->name('donneurs.enregistrer-don');
     });
+
+    // Routes pour les receveurs
+Route::prefix('receveurs')->group(function () {
+    Route::get('/', [ReceveurController::class, 'index'])->name('receveurs.index');
+    Route::get('/create', [ReceveurController::class, 'create'])->name('receveurs.create');
+    Route::post('/', [ReceveurController::class, 'store'])->name('receveurs.store');
+    Route::get('/{receveur}', [ReceveurController::class, 'show'])->name('receveurs.show');
+    Route::get('/{receveur}/edit', [ReceveurController::class, 'edit'])->name('receveurs.edit');
+    Route::put('/{receveur}', [ReceveurController::class, 'update'])->name('receveurs.update');
+    Route::delete('/{receveur}', [ReceveurController::class, 'destroy'])->name('receveurs.destroy');
+    Route::put('/{receveur}/toggle-urgence', [ReceveurController::class, 'toggleUrgence'])->name('receveurs.toggle-urgence');
+    Route::put('/{receveur}/satisfait', [ReceveurController::class, 'markAsSatisfied'])->name('receveurs.satisfait');
+});
 });

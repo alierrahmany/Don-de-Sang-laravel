@@ -96,6 +96,13 @@
                         <i class="fas fa-users w-5 text-center"></i>
                         <span class="font-medium">Gestion Donneurs</span>
                     </a>
+
+                    <!-- Receveurs - NOUVEAU LIEN -->
+                    <a href="{{ route('receveurs.index') }}" 
+                       class="flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all duration-200 {{ request()->routeIs('receveurs.*') ? 'bg-red-50 text-red-600 border-r-4 border-red-600' : '' }}">
+                        <i class="fas fa-hand-holding-heart w-5 text-center"></i>
+                        <span class="font-medium">Gestion Receveurs</span>
+                    </a>
                 </nav>
 
                 <!-- User Info -->
