@@ -1,225 +1,320 @@
-<!-- resources/views/matching/index.blade.php -->
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    <div class="px-4 py-6 sm:px-0">
-        <!-- En-tête -->
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900">Match Donneurs / Receveurs</h1>
-                <p class="text-gray-600 mt-1">Correspondance entre les receveurs et les donneurs compatibles</p>
-            </div>
-            <div class="flex space-x-3">
-                <a href="{{ route('matching.pdf', request()->query()) }}" 
-                   class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Exporter PDF
-                </a>
-            </div>
-        </div>
-
-        <!-- Filtres -->
-        <div class="bg-white p-4 rounded-lg shadow mb-6">
-            <form action="{{ route('matching.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Groupe sanguin -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Groupe Sanguin</label>
-                    <select name="groupe_sanguin" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-red-500 focus:border-red-500">
-                        <option value="">Tous les groupes</option>
-                        @foreach($groupesSanguins as $groupe)
-                            <option value="{{ $groupe }}" {{ request('groupe_sanguin') == $groupe ? 'selected' : '' }}>
-                                {{ $groupe }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                
-                <!-- Ville -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-                    <select name="ville" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-red-500 focus:border-red-500">
-                        <option value="">Toutes les villes</option>
-                        @foreach($villes as $ville)
-                            <option value="{{ $ville }}" {{ request('ville') == $ville ? 'selected' : '' }}>
-                                {{ $ville }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                
-                <!-- Urgence -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Urgence</label>
-                    <select name="urgence" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-red-500 focus:border-red-500">
-                        <option value="">Tous</option>
-                        <option value="1" {{ request('urgence') == '1' ? 'selected' : '' }}>Urgents uniquement</option>
-                        <option value="0" {{ request('urgence') == '0' ? 'selected' : '' }}>Non urgents</option>
-                    </select>
-                </div>
-                
-                <!-- Boutons -->
-                <div class="flex space-x-2 items-end">
-                    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center h-[42px]">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                        Appliquer
-                    </button>
-                    <a href="{{ route('matching.index') }}" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition flex items-center h-[42px]">
-                        <i class="fas fa-refresh mr-1"></i> Réinitialiser
-                    </a>
-                </div>
-            </form>
-        </div>
-
-        <!-- Statistiques -->
-        @php
-            $stats = app(App\Http\Controllers\MatchingController::class)->getStats();
-        @endphp
+<div class="container mx-auto px-4 py-6">
+    <!-- En-tête avec messages -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Matching Donneurs - Receveurs</h1>
+        <p class="text-gray-600">Système d'appariement intelligent basé sur la compatibilité sanguine</p>
         
+        <div id="alert-message" class="mt-4 hidden"></div>
+    </div>
 
-        <!-- Tableau de matching -->
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receveur</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Groupe</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Urgence</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">État</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poches restantes</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Donneurs Compatibles</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @forelse($receveurs as $receveur)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                                        <span class="text-red-600 font-semibold">
-                                            {{ substr($receveur->prenom, 0, 1) }}{{ substr($receveur->nom, 0, 1) }}
-                                        </span>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="text-sm font-medium text-gray-900">
-                                            {{ $receveur->prenom }} {{ $receveur->nom }}
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            {{ $receveur->ville }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-3 py-1 text-sm font-bold rounded-full bg-red-100 text-red-800">
-                                    {{ $receveur->groupe_sanguin }}
+    <!-- Navigation simplifiée -->
+    <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0 mb-6">
+        <a href="{{ route('matching.historique') }}" 
+           class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors">
+            <i class="fas fa-history"></i>
+            <span>Voir l'Historique</span>
+        </a>
+    </div>
+
+    <!-- Liste des receveurs avec matching -->
+    <div class="space-y-6">
+        @forelse($matches as $match)
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow duration-300">
+            <!-- En-tête du receveur -->
+            <div class="bg-gradient-to-r from-red-50 to-orange-50 px-6 py-4 border-b border-red-100">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center shadow-inner">
+                                <i class="fas fa-user-injured text-red-600 text-lg"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800">
+                                {{ $match['receveur']->nom_complet }}
+                                @if($match['receveur']->urgence)
+                                <span class="ml-2 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>URGENT
                                 </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                @if($receveur->urgence)
-                                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 flex items-center w-fit">
-                                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                                        URGENT
-                                    </span>
-                                @else
-                                    <span class="px-3 py-1 text-xs font-semibold rounded-full 
-                                        {{ $receveur->date_urgence ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800' }} flex items-center w-fit">
-                                        <i class="fas fa-{{ $receveur->date_urgence ? 'clock' : 'check' }} mr-1"></i>
-                                        {{ $receveur->date_urgence ? 'NORMAL' : 'STABLE' }}
-                                    </span>
                                 @endif
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 flex items-center w-fit">
-                                    <i class="fas fa-clock mr-1"></i>
-                                    EN ATTENTE
+                            </h3>
+                            <div class="flex flex-wrap items-center gap-4 mt-1 text-sm text-gray-600">
+                                <span class="flex items-center bg-white px-2 py-1 rounded-full shadow-sm">
+                                    <i class="fas fa-tint text-red-500 mr-1"></i>
+                                    Groupe: <strong class="ml-1">{{ $match['receveur']->groupe_sanguin }}</strong>
                                 </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                    <span class="text-lg font-bold {{ $receveur->poches_restantes > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                        {{ $receveur->poches_restantes }}
-                                    </span>
-                                    @if($receveur->poches_restantes > 0)
-                                        <i class="fas fa-exclamation-circle text-red-500 ml-2"></i>
-                                    @else
-                                        <i class="fas fa-check-circle text-green-500 ml-2"></i>
-                                    @endif
-                                </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="space-y-2">
-                                    @forelse($receveur->donneurs_compatibles as $donneur)
-                                    <div class="flex items-center justify-between bg-green-50 px-3 py-2 rounded-lg">
-                                        <div class="flex items-center">
-                                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                                                <span class="text-green-600 text-xs font-bold">
-                                                    {{ substr($donneur->prenom, 0, 1) }}{{ substr($donneur->nom, 0, 1) }}
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ $donneur->prenom }} {{ $donneur->nom }}
-                                                </div>
-                                                <div class="text-xs text-gray-500">
-                                                    {{ $donneur->groupe_sanguin }} • {{ $donneur->ville }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <span class="text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full">
-                                            Compatible
-                                        </span>
-                                    </div>
-                                    @empty
-                                    <div class="text-center py-3 text-gray-500">
-                                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                                        Aucun donneur compatible trouvé
-                                    </div>
-                                    @endforelse
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div class="flex flex-col space-y-2">
-                                    @if($receveur->donneurs_compatibles->count() > 0)
-                                        <button class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs flex items-center justify-center">
-                                            <i class="fas fa-check mr-1"></i>
-                                            ✔ Match
-                                        </button>
-                                    @endif
-                                    <a href="{{ route('receveurs.edit', $receveur) }}" 
-                                       class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs flex items-center justify-center">
-                                        <i class="fas fa-edit mr-1"></i>
-                                        Détails
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
-                                @if(request()->anyFilled(['groupe_sanguin', 'ville', 'urgence']))
-                                    Aucun receveur ne correspond à vos critères de recherche.
-                                @else
-                                    Aucun receveur en attente trouvé.
+                                <span class="flex items-center bg-white px-2 py-1 rounded-full shadow-sm">
+                                    <i class="fas fa-map-marker-alt text-blue-500 mr-1"></i>
+                                    {{ $match['receveur']->ville }}
+                                </span>
+                                <span class="flex items-center bg-white px-2 py-1 rounded-full shadow-sm">
+                                    <i class="fas fa-stethoscope text-green-500 mr-1"></i>
+                                    {{ $match['receveur']->besoin_medical }}
+                                </span>
+                                @if($match['receveur']->date_urgence)
+                                <span class="flex items-center bg-white px-2 py-1 rounded-full shadow-sm">
+                                    <i class="fas fa-clock text-orange-500 mr-1"></i>
+                                    {{ $match['receveur']->date_urgence->format('d/m/Y') }}
+                                </span>
                                 @endif
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 md:mt-0">
+                        <span class="px-4 py-2 rounded-full text-sm font-medium shadow-sm
+                            {{ $match['nombre_compatibles'] > 0 ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200' }}">
+                            <i class="fas fa-{{ $match['nombre_compatibles'] > 0 ? 'check' : 'times' }} mr-1"></i>
+                            {{ $match['nombre_compatibles'] }} donneur(s) compatible(s)
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            <!-- Pagination -->
-            <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-                {{ $receveurs->appends(request()->query())->links() }}
+            <!-- Donneurs compatibles -->
+            <div class="p-6">
+                @if($match['nombre_compatibles'] > 0)
+                <h4 class="text-md font-semibold text-gray-700 mb-4 flex items-center">
+                    <i class="fas fa-heart text-red-500 mr-2"></i>
+                    Donneurs compatibles trouvés :
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    @foreach($match['donneurs_compatibles'] as $donneur)
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white donneur-card">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shadow-inner">
+                                    <i class="fas fa-user text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-800 donneur-name">{{ $donneur->nom_complet }}</h4>
+                                    <p class="text-sm text-gray-600">{{ $donneur->ville }}</p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded border border-blue-200">
+                                {{ $donneur->groupe_sanguin }}
+                            </span>
+                        </div>
+                        
+                        <div class="space-y-2 text-sm text-gray-600 mb-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-venus-mars text-purple-500 w-4 mr-2"></i>
+                                <span>{{ $donneur->genre }}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-phone text-green-500 w-4 mr-2"></i>
+                                <span>{{ $donneur->telephone }}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-envelope text-blue-500 w-4 mr-2"></i>
+                                <span class="truncate">{{ $donneur->email }}</span>
+                            </div>
+                            @if($donneur->dernier_don)
+                            <div class="flex items-center">
+                                <i class="fas fa-calendar text-orange-500 w-4 mr-2"></i>
+                                <span>Dernier don: {{ $donneur->dernier_don->format('d/m/Y') }}</span>
+                            </div>
+                            @else
+                            <div class="flex items-center text-green-600">
+                                <i class="fas fa-star w-4 mr-2"></i>
+                                <span>Premier don</span>
+                            </div>
+                            @endif
+                        </div>
+
+                        <button type="button" 
+                                class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-sm hover:shadow-md assign-btn"
+                                data-receveur-id="{{ $match['receveur']->id }}"
+                                data-donneur-id="{{ $donneur->id }}"
+                                data-receveur-name="{{ $match['receveur']->nom_complet }}"
+                                data-donneur-name="{{ $donneur->nom_complet }}">
+                            <i class="fas fa-link"></i>
+                            <span>Assigner ce donneur</span>
+                        </button>
+                    </div>
+                    @endforeach
+                </div>
+                @else
+                <div class="text-center py-8 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 text-4xl mb-4"></i>
+                    <p class="text-gray-700 text-lg font-medium">Aucun donneur compatible trouvé</p>
+                    <p class="text-gray-500 text-sm mt-2">Vérifiez les donneurs disponibles ou les critères de compatibilité</p>
+                </div>
+                @endif
+            </div>
+        </div>
+        @empty
+        <div class="bg-white rounded-lg shadow p-12 text-center border border-gray-200">
+            <i class="fas fa-check-circle text-green-500 text-5xl mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Aucun receveur en attente</h3>
+            <p class="text-gray-600">Tous les receveurs ont été satisfaits ou aucun n'est actuellement en attente.</p>
+            <a href="{{ route('receveurs.create') }}" class="inline-block mt-4 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors">
+                <i class="fas fa-plus mr-2"></i>Ajouter un receveur
+            </a>
+        </div>
+        @endforelse
+    </div>
+
+    <!-- Pagination -->
+    @if($receveurs->hasPages())
+    <div class="mt-8 bg-white rounded-lg shadow border border-gray-200 px-6 py-4">
+        {{ $receveurs->links() }}
+    </div>
+    @endif
+</div>
+
+<!-- Modal de confirmation -->
+<div id="confirmationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
+                <i class="fas fa-question text-blue-600 text-xl"></i>
+            </div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">Confirmer l'assignation</h3>
+            <div class="mt-2 px-7 py-3">
+                <p class="text-sm text-gray-500" id="modalMessage">
+                    Êtes-vous sûr de vouloir assigner ce donneur ?
+                </p>
+            </div>
+            <div class="flex items-center justify-center gap-4 px-4 py-3 mt-4">
+                <button id="cancelButton" 
+                        class="px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md w-24 shadow-sm hover:bg-gray-400 focus:outline-none">
+                    Annuler
+                </button>
+                <button id="confirmButton" 
+                        class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 shadow-sm hover:bg-red-700 focus:outline-none">
+                    OK
+                </button>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentAssignationData = null;
+    
+    // Gérer le clic sur le bouton d'assignation
+    document.querySelectorAll('.assign-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            currentAssignationData = {
+                receveur_id: this.dataset.receveurId,
+                donneur_id: this.dataset.donneurId,
+                receveur_name: this.dataset.receveurName,
+                donneur_name: this.dataset.donneurName
+            };
+            
+            // Mettre à jour le message du modal
+            document.getElementById('modalMessage').innerHTML = 
+                `Êtes-vous sûr de vouloir assigner <strong>${currentAssignationData.donneur_name}</strong> à <strong>${currentAssignationData.receveur_name}</strong> ?`;
+            
+            // Afficher le modal
+            document.getElementById('confirmationModal').classList.remove('hidden');
+        });
+    });
+    
+    // Gérer la confirmation
+    document.getElementById('confirmButton').addEventListener('click', function() {
+        if (currentAssignationData) {
+            assignerDonneur(currentAssignationData);
+        }
+    });
+    
+    // Gérer l'annulation
+    document.getElementById('cancelButton').addEventListener('click', function() {
+        document.getElementById('confirmationModal').classList.add('hidden');
+        currentAssignationData = null;
+    });
+    
+    // Fermer le modal en cliquant à l'extérieur
+    document.getElementById('confirmationModal').addEventListener('click', function(e) {
+        if (e.target.id === 'confirmationModal') {
+            document.getElementById('confirmationModal').classList.add('hidden');
+            currentAssignationData = null;
+        }
+    });
+    
+    function assignerDonneur(data) {
+        // Afficher un indicateur de chargement
+        const confirmButton = document.getElementById('confirmButton');
+        const cancelButton = document.getElementById('cancelButton');
+        const originalText = confirmButton.innerHTML;
+        
+        confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        confirmButton.disabled = true;
+        cancelButton.disabled = true;
+        
+        // Préparer les données pour l'envoi
+        const formData = new FormData();
+        formData.append('receveur_id', data.receveur_id);
+        formData.append('donneur_id', data.donneur_id);
+        formData.append('_token', '{{ csrf_token() }}');
+        
+        fetch('{{ route("matching.assigner") }}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur réseau');
+            }
+            return response.json();
+        })
+        .then(result => {
+            // Cacher le modal
+            document.getElementById('confirmationModal').classList.add('hidden');
+            
+            // Afficher le message
+            showAlert(result.success, result.message);
+            
+            if (result.success && result.redirect_url) {
+                // Rediriger vers l'historique après 2 secondes
+                setTimeout(() => {
+                    window.location.href = result.redirect_url;
+                }, 2000);
+            } else if (result.success) {
+                // Recharger la page après 2 secondes
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert(false, 'Une erreur réseau est survenue. Veuillez réessayer.');
+        })
+        .finally(() => {
+            // Restaurer le bouton
+            confirmButton.innerHTML = originalText;
+            confirmButton.disabled = false;
+            cancelButton.disabled = false;
+            currentAssignationData = null;
+        });
+    }
+    
+    function showAlert(success, message) {
+        const alertDiv = document.getElementById('alert-message');
+        alertDiv.className = `mt-4 px-4 py-3 rounded relative ${success ? 'bg-green-100 border border-green-400 text-green-700' : 'bg-red-100 border border-red-400 text-red-700'}`;
+        alertDiv.innerHTML = `
+            <strong class="font-bold">${success ? 'Succès !' : 'Erreur !'}</strong>
+            <span class="block sm:inline">${message}</span>
+            <button onclick="this.parentElement.classList.add('hidden')" class="absolute top-0 right-0 px-3 py-2">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        alertDiv.classList.remove('hidden');
+        
+        // Masquer l'alerte après 5 secondes
+        setTimeout(() => {
+            alertDiv.classList.add('hidden');
+        }, 5000);
+    }
+});
+</script>
 @endsection

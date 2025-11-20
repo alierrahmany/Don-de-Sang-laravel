@@ -1,5 +1,4 @@
 <?php
-// app/Models/Donneur.php
 
 namespace App\Models;
 
@@ -11,11 +10,6 @@ class Donneur extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<string>
-     */
     protected $fillable = [
         'nom',
         'prenom',
@@ -27,19 +21,43 @@ class Donneur extends Model
         'date_naissance',
         'dernier_don',
         'disponible'
-        
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'date_naissance' => 'date',
         'dernier_don' => 'date',
         'disponible' => 'boolean',
     ];
 
+    // Accessor pour le nom complet
+    public function getNomCompletAttribute()
+    {
+        return $this->prenom . ' ' . $this->nom;
+    }
 
+    // Relation avec les assignations
+    public function assignations()
+    {
+        return $this->hasMany(Assignation::class);
+    }
+
+    public function receveursAssignes()
+    {
+        return $this->belongsToMany(Receveur::class, 'assignations')
+                    ->withPivot('date_assignation', 'statut', 'notes')
+                    ->withTimestamps();
+    }
+
+    public function getEstDisponiblePourDonAttribute()
+    {
+        if (!$this->disponible) {
+            return false;
+        }
+
+        if ($this->dernier_don) {
+            return $this->dernier_don->diffInMonths(now()) >= 3;
+        }
+
+        return true;
+    }
 }

@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BloodBank - Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- ... autres balises ... -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.12.0/cdn.min.js" defer></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         /* Styles pour assurer que la sidebar fonctionne correctement */
@@ -164,12 +169,12 @@
                         <i class="fas fa-hand-holding-heart w-5 text-center"></i>
                         <span class="font-medium">Gestion Receveurs</span>
                     </a>
-                    <!-- Dans la sidebar, après les liens existants -->
-                    <a href="{{ route('matching.index') }}" 
-                       class="flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all duration-200 {{ request()->routeIs('matching.*') ? 'bg-red-50 text-red-600 border-r-4 border-red-600' : '' }}">
-                        <i class="fas fa-heartbeat w-5 text-center"></i>
-                        <span class="font-medium">Matching</span>
-                    </a>
+                    <!-- Dans la navigation de la sidebar, ajoutez : -->
+<a href="{{ route('matching.index') }}" 
+   class="flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all duration-200 {{ request()->routeIs('matching.*') ? 'bg-red-50 text-red-600 border-r-4 border-red-600' : '' }}">
+    <i class="fas fa-heartbeat w-5 text-center"></i>
+    <span class="font-medium">Matching</span>
+</a>
                 </nav>
 
                 <!-- User Info Sidebar -->

@@ -8,6 +8,7 @@ use App\Http\Controllers\ReceveurController;
 use App\Http\Controllers\MatchingController;
 
 
+
 // Route racine - redirige vers le dashboard si authentifié, sinon vers le login
 Route::get('/', function () {
     if (Auth::check()) {
@@ -25,6 +26,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+     
 
     // Routes pour les donneurs
     Route::prefix('donneurs')->group(function () {
@@ -56,8 +58,10 @@ Route::prefix('receveurs')->group(function () {
 
 // Routes pour le matching
 Route::prefix('matching')->group(function () {
-    Route::get('/', [MatchingController::class, 'index'])->name('matching.index');
-    Route::get('/pdf', [MatchingController::class, 'exportPDF'])->name('matching.pdf');
-});
+        Route::get('/', [MatchingController::class, 'index'])->name('matching.index');
+        Route::post('/assigner', [MatchingController::class, 'assignerDonneur'])->name('matching.assigner');
+        Route::get('/historique', [MatchingController::class, 'historique'])->name('matching.historique');
+        Route::get('/assignation/{id}', [MatchingController::class, 'showAssignation'])->name('matching.show');
+    });
 
 });

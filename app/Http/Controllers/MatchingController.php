@@ -1,159 +1,188 @@
 <?php
-// app/Http\Controllers\MatchingController.php
 
 namespace App\Http\Controllers;
 
 use App\Models\Donneur;
 use App\Models\Receveur;
+use App\Models\Assignation;
 use Illuminate\Http\Request;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class MatchingController extends Controller
 {
-    /**
-     * Display the matching between donors and receivers
-     */
-    public function index(Request $request)
-    {
-        // Récupérer les receveurs en attente
-        $receveurs = Receveur::where('statut', true)
-            ->when($request->filled('urgence'), function($query) use ($request) {
-                return $query->where('urgence', $request->urgence);
-            })
-            ->when($request->filled('groupe_sanguin'), function($query) use ($request) {
-                return $query->where('groupe_sanguin', $request->groupe_sanguin);
-            })
-            ->when($request->filled('ville'), function($query) use ($request) {
-                return $query->where('ville', 'like', '%' . $request->ville . '%');
-            })
-            ->latest()
-            ->paginate(10);
+    // Règles de compatibilité sanguine
+    private $compatibiliteSanguine = [
+        'A+' => ['A+', 'A-', 'O+', 'O-'],
+        'A-' => ['A-', 'O-'],
+        'B+' => ['B+', 'B-', 'O+', 'O-'],
+        'B-' => ['B-', 'O-'],
+        'AB+' => ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+        'AB-' => ['A-', 'B-', 'AB-', 'O-'],
+        'O+' => ['O+', 'O-'],
+        'O-' => ['O-']
+    ];
 
-        // Pour chaque receveur, trouver les donneurs compatibles
+    public function index()
+    {
+        $receveurs = Receveur::where('statut', true)
+            ->orderBy('urgence', 'desc')
+            ->orderBy('date_urgence', 'asc')
+            ->paginate(1);
+
+        $matches = [];
+
         foreach ($receveurs as $receveur) {
-            $receveur->donneurs_compatibles = $this->getDonneursCompatibles($receveur);
-            $receveur->poches_restantes = $this->calculerPochesRestantes($receveur);
-            $receveur->donneurs_compatibles_count = $receveur->donneurs_compatibles->count();
+            $donneursCompatibles = $this->getDonneursCompatibles($receveur);
+
+            $matches[$receveur->id] = [
+                'receveur' => $receveur,
+                'donneurs_compatibles' => $donneursCompatibles,
+                'nombre_compatibles' => $donneursCompatibles->count()
+            ];
         }
 
-        $groupesSanguins = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-        $villes = Receveur::select('ville')->distinct()->orderBy('ville')->pluck('ville');
+        // Trier par urgence et nombre de compatibles
+        uasort($matches, function($a, $b) {
+            if ($a['receveur']->urgence && !$b['receveur']->urgence) return -1;
+            if (!$a['receveur']->urgence && $b['receveur']->urgence) return 1;
+            return $a['nombre_compatibles'] <=> $b['nombre_compatibles'];
+        });
 
-        return view('matching.index', compact('receveurs', 'groupesSanguins', 'villes'));
+        return view('matching.index', compact(
+            'receveurs',
+            'matches'
+        ));
     }
 
-    /**
-     * Get compatible donors for a receiver
-     */
-    private function getDonneursCompatibles(Receveur $receveur)
+    private function getDonneursCompatibles($receveur)
     {
-        $groupeReceveur = $receveur->groupe_sanguin;
-        
-        // Règles de compatibilité sanguine
-        $compatibilite = [
-            'A+' => ['A+', 'A-', 'O+', 'O-'],
-            'A-' => ['A-', 'O-'],
-            'B+' => ['B+', 'B-', 'O+', 'O-'],
-            'B-' => ['B-', 'O-'],
-            'AB+' => ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
-            'AB-' => ['A-', 'B-', 'AB-', 'O-'],
-            'O+' => ['O+', 'O-'],
-            'O-' => ['O-']
-        ];
-
-        $groupesCompatibles = $compatibilite[$groupeReceveur] ?? [];
-
         return Donneur::where('disponible', true)
-            ->whereIn('groupe_sanguin', $groupesCompatibles)
-            ->where('ville', $receveur->ville) // Même ville pour faciliter le don
-            ->when($receveur->urgence, function($query) {
-                return $query->orderBy('dernier_don', 'asc'); // Prioriser ceux qui n'ont pas donné depuis longtemps
+            ->whereIn('groupe_sanguin', $this->compatibiliteSanguine[$receveur->groupe_sanguin] ?? [])
+            ->where(function($query) use ($receveur) {
+                $query->where('ville', $receveur->ville)
+                      ->orWhereNotNull('ville');
             })
-            ->limit(5) // Limiter à 5 donneurs pour ne pas surcharger l'affichage
+            ->where(function($query) {
+                $query->whereNull('dernier_don')
+                      ->orWhere('dernier_don', '<=', Carbon::now()->subMonths(3));
+            })
+            ->orderByRaw("CASE WHEN ville = ? THEN 0 ELSE 1 END", [$receveur->ville])
+            ->orderBy('dernier_don', 'asc')
             ->get();
     }
 
-    /**
-     * Calculate remaining blood bags needed
-     */
-    private function calculerPochesRestantes(Receveur $receveur)
+    public function assignerDonneur(Request $request)
     {
-        // Simulation du calcul des poches restantes
-        // En réalité, cela dépendrait des besoins médicaux spécifiques
-        $besoinBase = 3; // Besoin de base en poches de sang
-        
-        // Ajuster selon l'urgence
-        if ($receveur->urgence) {
-            $besoinBase = 4;
+        $request->validate([
+            'receveur_id' => 'required|exists:receveurs,id',
+            'donneur_id' => 'required|exists:donneurs,id'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $donneur = Donneur::findOrFail($request->donneur_id);
+            $receveur = Receveur::findOrFail($request->receveur_id);
+
+            // Vérifier si l'assignation existe déjà
+            $assignationExistante = Assignation::where('receveur_id', $request->receveur_id)
+                ->where('donneur_id', $request->donneur_id)
+                ->first();
+
+            if ($assignationExistante) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cette assignation existe déjà.'
+                ]);
+            }
+
+            // Vérifier la disponibilité du donneur
+            if (!$donneur->disponible) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce donneur n\'est plus disponible.'
+                ]);
+            }
+
+            // Vérifier si le donneur est éligible pour un nouveau don
+            if (!$donneur->est_disponible_pour_don) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce donneur n\'est pas éligible pour un nouveau don (doit attendre 3 mois après le dernier don).'
+                ]);
+            }
+
+            // Vérifier le statut du receveur
+            if (!$receveur->statut) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce receveur a déjà été satisfait.'
+                ]);
+            }
+
+            // Vérifier la compatibilité sanguine
+            $groupesCompatibles = $this->compatibiliteSanguine[$receveur->groupe_sanguin] ?? [];
+            if (!in_array($donneur->groupe_sanguin, $groupesCompatibles)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Incompatibilité sanguine entre le donneur et le receveur.'
+                ]);
+            }
+
+            // Créer l'assignation
+            Assignation::create([
+                'receveur_id' => $request->receveur_id,
+                'donneur_id' => $request->donneur_id,
+                'date_assignation' => now(),
+                'statut' => 'assigné',
+                'notes' => 'Assignation automatique via matching'
+            ]);
+
+            // Marquer le donneur comme indisponible
+            $donneur->update(['disponible' => false]);
+
+            // Marquer le receveur comme satisfait
+            $receveur->update(['statut' => false]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Donneur assigné avec succès au receveur.',
+                'redirect_url' => route('matching.historique')
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Erreur lors de l\'assignation: ' . $e->getMessage(), [
+                'receveur_id' => $request->receveur_id,
+                'donneur_id' => $request->donneur_id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'assignation: ' . $e->getMessage()
+            ], 500);
         }
-        
-        // Réduire en fonction des donneurs compatibles disponibles
-        $donneursDisponibles = $receveur->donneurs_compatibles->count();
-        $pochesCouvertes = min($donneursDisponibles, $besoinBase);
-        
-        return max(0, $besoinBase - $pochesCouvertes);
     }
 
-    /**
-     * Determine urgency level based on receiver data
-     */
-    private function getNiveauUrgence(Receveur $receveur)
+    public function historique()
     {
-        if ($receveur->urgence) {
-            return $receveur->poches_restantes > 2 ? 'CRITIQUE' : 'URGENT';
-        }
-        return 'NORMAL';
+        $assignations = Assignation::with(['receveur', 'donneur'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(7);
+
+        return view('matching.historique', compact('assignations'));
     }
 
-    /**
-     * Export matching results to PDF
-     */
-    public function exportPDF(Request $request)
+    public function showAssignation($id)
     {
-        // Récupérer les données avec les mêmes filtres
-        $receveurs = Receveur::where('statut', true)
-            ->when($request->filled('urgence'), function($query) use ($request) {
-                return $query->where('urgence', $request->urgence);
-            })
-            ->when($request->filled('groupe_sanguin'), function($query) use ($request) {
-                return $query->where('groupe_sanguin', $request->groupe_sanguin);
-            })
-            ->when($request->filled('ville'), function($query) use ($request) {
-                return $query->where('ville', 'like', '%' . $request->ville . '%');
-            })
-            ->get();
-
-        // Préparer les données pour le PDF
-        foreach ($receveurs as $receveur) {
-            $receveur->donneurs_compatibles = $this->getDonneursCompatibles($receveur);
-            $receveur->poches_restantes = $this->calculerPochesRestantes($receveur);
-            $receveur->niveau_urgence = $this->getNiveauUrgence($receveur);
-        }
-
-        $data = [
-            'receveurs' => $receveurs,
-            'title' => 'Rapport de Matching Donneurs/Receveurs',
-            'date' => now()->format('d/m/Y H:i'),
-        ];
-
-        $pdf = Pdf::loadView('matching.pdf', $data);
+        $assignation = Assignation::with(['receveur', 'donneur'])->findOrFail($id);
         
-        return $pdf->download('matching-donneurs-receveurs-' . now()->format('Y-m-d') . '.pdf');
-    }
-
-    /**
-     * Get matching statistics
-     */
-    public function getStats()
-    {
-        $totalReceveursEnAttente = Receveur::where('statut', true)->count();
-        $receveursUrgents = Receveur::where('statut', true)->where('urgence', true)->count();
-        $donneursDisponibles = Donneur::where('disponible', true)->count();
-
-        return [
-            'total_receveurs_attente' => $totalReceveursEnAttente,
-            'receveurs_urgents' => $receveursUrgents,
-            'donneurs_disponibles' => $donneursDisponibles,
-        ];
+        return view('matching.show', compact('assignation'));
     }
 }

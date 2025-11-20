@@ -48,8 +48,6 @@
             </div>
         </div>
 
-       
-
         <!-- Total Receveurs -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="flex items-center">
@@ -127,8 +125,77 @@
         </div>
     </div>
 
- 
+    <!-- Troisième ligne de statistiques pour les assignations -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Total Assignations -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-blue-100 rounded-lg">
+                    <i class="fas fa-handshake text-blue-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Total Assignations</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $totalAssignations }}</p>
+                </div>
+            </div>
+            
+        </div>
 
-    
+        <!-- Assignations ce mois-ci -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-indigo-100 rounded-lg">
+                    <i class="fas fa-calendar-alt text-indigo-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Ce mois-ci</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $assignationsMoisEnCours }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-indigo-600 text-sm font-medium">
+                    @if($totalAssignations > 0)
+                        {{ number_format(($assignationsMoisEnCours / $totalAssignations) * 100, 1) }}% du total
+                    @else
+                        0% du total
+                    @endif
+                </span>
+            </div>
+        </div>
+
+        <!-- Assignations cette semaine -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-pink-100 rounded-lg">
+                    <i class="fas fa-calendar-week text-pink-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Cette semaine</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $assignationsSemaine }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-pink-600 text-sm font-medium">
+                    Assignations sur 7 jours
+                </span>
+            </div>
+        </div>
+
+    </div>
+
+    </div>
+
+
 </div>
+
+<!-- Styles pour les icônes Font Awesome -->
+<style>
+    .fas {
+        display: inline-block;
+        font-style: normal;
+        font-variant: normal;
+        text-rendering: auto;
+        line-height: 1;
+    }
+</style>
 @endsection
